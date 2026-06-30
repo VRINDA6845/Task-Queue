@@ -2,8 +2,6 @@ import zmq
 import time
 import logging
 
-print("Coordinator file is running")
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s.%(msecs)03d  [coordinator]  %(message)s",
