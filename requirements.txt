@@ -1,0 +1,5 @@
+# Phase 1 and Phase 2 use only the Python standard library.
+# No external packages needed for those phases.
+
+# Phase 3 and Phase 4 use ZeroMQ for inter-process socket communication.
+pyzmq>=25.0.0
