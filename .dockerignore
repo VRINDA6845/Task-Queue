@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+
+.git/
+.gitignore
+
+.vscode/
+.idea/
+
+*.log
+
+distributed_queue/tasks.db
+distributed_queue/data/tasks.db
