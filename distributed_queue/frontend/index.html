@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Distributed Queue — Console</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+  :root {
+    --bg: #0a0e1a;
+    --panel: #111a2e;
+    --panel-2: #0d1526;
+    --line: #1f2c47;
+    --text: #dbe4f5;
+    --dim: #7688a8;
+    --dimmer: #4a5876;
+
+    --blue: #3d7fff;
+    --violet: #8b6bf0;
+    --cyan: #22d3ee;
+    --emerald: #2dd4a3;
+    --amber: #f0a842;
+    --coral: #f2545b;
+
+    --mono: "SF Mono", "JetBrains Mono", "Fira Code", ui-monospace, Consolas, monospace;
+    --sans: -apple-system, "Segoe UI", "Inter", ui-sans-serif, system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background:
+      radial-gradient(1200px 500px at 15% -10%, rgba(61,127,255,0.10), transparent 60%),
+      radial-gradient(900px 500px at 100% 0%, rgba(139,107,240,0.08), transparent 55%),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 28px 32px 60px;
+    min-height: 100vh;
+  }
+
+  /* ---------- Header ---------- */
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 26px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .brand .mark {
+    font-size: 20px;
+    color: var(--blue);
+    filter: drop-shadow(0 0 6px rgba(61,127,255,0.6));
+  }
+  .brand-text h1 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+  }
+  .brand-text p {
+    margin: 2px 0 0;
+    font-size: 12px;
+    color: var(--dim);
+    font-family: var(--mono);
+  }
+
+  .status-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    letter-spacing: 0.05em;
+    padding: 7px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    background: var(--panel-2);
+  }
+  .status-badge .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .status-badge.online { color: var(--emerald); }
+  .status-badge.online .dot { background: var(--emerald); box-shadow: 0 0 8px var(--emerald); animation: pulse 2s infinite; }
+  .status-badge.offline { color: var(--coral); }
+  .status-badge.offline .dot { background: var(--coral); box-shadow: 0 0 8px var(--coral); }
+
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  /* ---------- Stats ---------- */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .stat {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 16px 18px;
+    transition: border-color 0.2s ease;
+  }
+  .stat:hover { border-color: var(--dimmer); }
+  .stat .n {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 700;
+    transition: opacity 0.15s ease;
+  }
+  .stat .l {
+    color: var(--dim);
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    margin-top: 4px;
+  }
+  .stat.total .n { color: var(--text); }
+  .stat.pending .n { color: var(--amber); }
+  .stat.active .n { color: var(--cyan); }
+  .stat.completed .n { color: var(--emerald); }
+  .stat.failed .n { color: var(--coral); }
+
+  /* ---------- Panels ---------- */
+  .grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 16px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .panel h2 {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--dim);
+    margin: 0;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .panel h2 .count {
+    font-family: var(--mono);
+    color: var(--dimmer);
+    font-weight: 400;
+    text-transform: none;
+    letter-spacing: 0;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    color: var(--dimmer);
+    font-weight: 500;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 10px 18px;
+    font-family: var(--sans);
+  }
+  td { padding: 10px 18px; border-top: 1px solid var(--line); font-family: var(--mono); font-size: 12.5px; }
+  tr { transition: background 0.15s ease; }
+  tr:hover td { background: var(--panel-2); }
+
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+  .dot.alive { background: var(--emerald); box-shadow: 0 0 6px var(--emerald); }
+  .dot.dead { background: var(--coral); }
+  .dot.pending { background: var(--amber); }
+  .dot.active { background: var(--cyan); box-shadow: 0 0 6px var(--cyan); animation: pulse 1.4s infinite; }
+  .dot.done { background: var(--emerald); }
+  .dot.failed { background: var(--coral); }
+
+  .status-text { font-size: 11.5px; letter-spacing: 0.03em; text-transform: uppercase; font-weight: 600; }
+  .status-text.alive { color: var(--emerald); }
+  .status-text.dead { color: var(--coral); }
+  .status-text.pending { color: var(--amber); }
+  .status-text.active { color: var(--cyan); }
+  .status-text.done { color: var(--emerald); }
+  .status-text.failed { color: var(--coral); }
+
+  .empty { color: var(--dimmer); padding: 22px 18px; font-style: italic; font-size: 12.5px; }
+
+  /* ---------- Submit form ---------- */
+  form#submit-form { padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+
+  .field label {
+    display: block;
+    font-size: 10.5px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--dim);
+    margin-bottom: 6px;
+  }
+  .field input {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 9px 11px;
+    transition: border-color 0.15s ease;
+  }
+  .field input:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(61,127,255,0.15); }
+
+  form#submit-form button {
+    margin-top: 4px;
+    background: linear-gradient(135deg, var(--blue), var(--violet));
+    border: none;
+    border-radius: 6px;
+    color: #fff;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 12.5px;
+    letter-spacing: 0.03em;
+    padding: 11px 14px;
+    cursor: pointer;
+    transition: filter 0.15s ease, transform 0.05s ease;
+  }
+  form#submit-form button:hover { filter: brightness(1.12); }
+  form#submit-form button:active { transform: translateY(1px); }
+
+  #submit-msg { font-size: 11.5px; color: var(--dim); min-height: 14px; font-family: var(--mono); }
+  #submit-msg.ok { color: var(--emerald); }
+  #submit-msg.err { color: var(--coral); }
+
+  .tasks-panel { margin-top: 16px; }
+  #tasks-body td:first-child { color: var(--dim); }
+
+  @media (max-width: 860px) {
+    .stats { grid-template-columns: repeat(2, 1fr); }
+    .grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="mark">◈</span>
+    <div class="brand-text">
+      <h1>DISTRIBUTED QUEUE</h1>
+      <p>Real-time worker &amp; task monitoring</p>
+    </div>
+  </div>
+  <div class="status-badge online" id="status-badge">
+    <span class="dot"></span>
+    <span id="status-text">SYSTEM ONLINE</span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat total"><div class="n" id="s-total">–</div><div class="l">Total</div></div>
+  <div class="stat pending"><div class="n" id="s-pending">–</div><div class="l">Pending</div></div>
+  <div class="stat active"><div class="n" id="s-active">–</div><div class="l">Active</div></div>
+  <div class="stat completed"><div class="n" id="s-completed">–</div><div class="l">Completed</div></div>
+  <div class="stat failed"><div class="n" id="s-failed">–</div><div class="l">Failed</div></div>
+</div>
+
+<div class="grid">
+  <div class="panel">
+    <h2>Worker cluster <span class="count" id="workers-count">0</span></h2>
+    <table>
+      <thead><tr><th>Worker</th><th>Status</th><th>Current task</th><th>Last heartbeat</th></tr></thead>
+      <tbody id="workers-body"></tbody>
+    </table>
+    <div id="workers-empty" class="empty" style="display:none">No workers have reported in yet.</div>
+  </div>
+
+  <div class="panel">
+    <h2>Submit new task</h2>
+    <form id="submit-form">
+      <div class="field">
+        <label for="f-type">Type</label>
+        <input id="f-type" type="text" value="process_data" required />
+      </div>
+      <div class="field">
+        <label for="f-input">Payload input</label>
+        <input id="f-input" type="text" value="hello world" required />
+      </div>
+      <button type="submit">+ Submit task</button>
+      <div id="submit-msg"></div>
+    </form>
+  </div>
+</div>
+
+<div class="panel tasks-panel">
+  <h2>Recent tasks <span class="count" id="tasks-count">0</span></h2>
+  <table>
+    <thead><tr><th>ID</th><th>Status</th><th>Worker</th><th>Type</th><th>Payload</th></tr></thead>
+    <tbody id="tasks-body"></tbody>
+  </table>
+  <div id="tasks-empty" class="empty" style="display:none">No tasks submitted yet.</div>
+</div>
+
+<script>
+const API = "";
+const MAX_ROWS = 15;
+
+function timeAgo(ts) {
+  if (!ts) return "—";
+  const s = Math.max(0, Math.floor(Date.now() / 1000 - ts));
+  return s + "s ago";
+}
+
+function setOnline(isOnline) {
+  const badge = document.getElementById("status-badge");
+  const text = document.getElementById("status-text");
+  badge.className = "status-badge " + (isOnline ? "online" : "offline");
+  text.textContent = isOnline ? "SYSTEM ONLINE" : "COORDINATOR UNREACHABLE";
+}
+
+async function refresh() {
+  try {
+    const [stats, workers, tasks] = await Promise.all([
+      fetch(API + "/stats").then(r => r.json()),
+      fetch(API + "/workers").then(r => r.json()),
+      fetch(API + "/tasks").then(r => r.json()),
+    ]);
+    setOnline(true);
+
+    const total = (stats.pending||0) + (stats.active||0) + (stats.completed||0) + (stats.failed||0);
+    document.getElementById("s-total").textContent = total;
+    document.getElementById("s-pending").textContent = stats.pending ?? 0;
+    document.getElementById("s-active").textContent = stats.active ?? 0;
+    document.getElementById("s-completed").textContent = stats.completed ?? 0;
+    document.getElementById("s-failed").textContent = stats.failed ?? 0;
+
+    const aliveCount = workers.filter(w => w.status === "alive").length;
+    document.getElementById("workers-count").textContent = `${aliveCount}/${workers.length}`;
+
+    const wBody = document.getElementById("workers-body");
+    const wEmpty = document.getElementById("workers-empty");
+    wBody.innerHTML = "";
+    wEmpty.style.display = workers.length ? "none" : "block";
+    workers.forEach(w => {
+      const tr = document.createElement("tr");
+      const label = w.current_task ? "ACTIVE" : (w.status === "alive" ? "IDLE" : "—");
+      tr.innerHTML = `
+        <td>${w.worker_id}</td>
+        <td><span class="dot ${w.status}"></span><span class="status-text ${w.status}">${w.status === "alive" ? label : "DEAD"}</span></td>
+        <td>${w.current_task ? w.current_task.id : "idle"}</td>
+        <td>${timeAgo(w.last_heartbeat)}</td>`;
+      wBody.appendChild(tr);
+    });
+
+    const tBody = document.getElementById("tasks-body");
+    const tEmpty = document.getElementById("tasks-empty");
+    const taskList = Object.values(tasks).sort((a, b) => a.id < b.id ? 1 : -1).slice(0, MAX_ROWS);
+    document.getElementById("tasks-count").textContent = Object.values(tasks).length;
+    tBody.innerHTML = "";
+    tEmpty.style.display = taskList.length ? "none" : "block";
+    taskList.forEach(t => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${t.id}</td>
+        <td><span class="dot ${t.status}"></span><span class="status-text ${t.status}">${t.status}</span></td>
+        <td>${t.worker_id || "—"}</td>
+        <td>${t.type}</td>
+        <td>${JSON.stringify(t.payload)}</td>`;
+      tBody.appendChild(tr);
+    });
+  } catch (err) {
+    setOnline(false);
+    console.error("refresh failed", err);
+  }
+}
+
+document.getElementById("submit-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const type = document.getElementById("f-type").value.trim();
+  const input = document.getElementById("f-input").value.trim();
+  const msg = document.getElementById("submit-msg");
+  msg.className = "";
+  msg.textContent = "submitting...";
+  try {
+    const res = await fetch(API + "/tasks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type, payload: { input } }),
+    });
+    if (!res.ok) throw new Error("request failed");
+    msg.className = "ok";
+    msg.textContent = "task submitted ✓";
+    refresh();
+  } catch (err) {
+    msg.className = "err";
+    msg.textContent = "failed — is the coordinator running?";
+  }
+  setTimeout(() => { msg.textContent = ""; msg.className = ""; }, 2500);
+});
+
+refresh();
+setInterval(refresh, 3000);
+</script>
+
+</body>
+</html>
