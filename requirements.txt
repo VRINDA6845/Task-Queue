@@ -2,4 +2,8 @@
 # No external packages needed for those phases.
 
 # Phase 3 and Phase 4 use ZeroMQ for inter-process socket communication.
-pyzmq>=25.0.0
+pyzmq
+
+# REST API and dashboard server
+fastapi
+uvicorn[standard]

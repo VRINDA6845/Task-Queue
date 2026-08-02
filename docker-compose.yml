@@ -1,0 +1,55 @@
+services:
+
+  coordinator:
+    build: .
+    command: python distributed_queue/Coordinator.py
+    restart: unless-stopped
+    volumes:
+      - task_data:/app/distributed_queue/data
+    ports:
+      - "5555:5555"
+      - "5556:5556"
+      - "5557:5557"
+      - "5558:5558"
+      - "5559:5559"
+
+  worker_1:
+    build: .
+    command: python distributed_queue/Worker.py worker_1
+    restart: unless-stopped
+    environment:
+      COORDINATOR_HOST: coordinator
+    depends_on:
+      - coordinator
+
+  worker_2:
+    build: .
+    command: python distributed_queue/Worker.py worker_2
+    restart: unless-stopped
+    environment:
+      COORDINATOR_HOST: coordinator
+    depends_on:
+      - coordinator
+
+  worker_3:
+    build: .
+    command: python distributed_queue/Worker.py worker_3
+    restart: unless-stopped
+    environment:
+      COORDINATOR_HOST: coordinator
+    depends_on:
+      - coordinator
+
+  api:
+    build: .
+    command: python -m uvicorn distributed_queue.api.main:app --host 0.0.0.0 --port 8000
+    restart: unless-stopped
+    environment:
+      COORDINATOR_HOST: coordinator
+    depends_on:
+      - coordinator
+    ports:
+      - "8000:8000"
+
+volumes:
+  task_data:
